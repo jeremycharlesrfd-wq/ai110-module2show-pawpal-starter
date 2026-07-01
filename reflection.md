@@ -5,7 +5,27 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+The user should be able to set their time avalaibility, they should also have the possibility to change or delete the tasks suggested by the app. They should also be able to add a new pet.
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+CLass Task:
+attributes: length, priority level, category, completion
+methods: assignLength(), assignPriorityLevel(), assignCategory(), add(), edit(), markComplete(), markUncomplete()
+
+Class Owner:
+attributes: name, schedule
+methods: addOwner(), changeOwner(), modifyName()
+
+Class Pet:
+attributes: name, breed
+methods: add(), remove(), addSpecialNeeds()
+
+Class Scheduler:
+attributes: task
+method: viewSchedule(), deleteSchedule(), createNewSchedule()
+
 
 **b. Design changes**
 

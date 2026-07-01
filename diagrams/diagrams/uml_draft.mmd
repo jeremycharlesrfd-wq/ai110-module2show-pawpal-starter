@@ -1,0 +1,54 @@
+classDiagram
+    %% PawPal+ class diagram
+
+    class Task {
+        +String id
+        +String category
+        +int length
+        +int priorityLevel
+        +bool completion
+        +assignLength(int minutes) void
+        +assignPriorityLevel(int level) void
+        +assignCategory(String category) void
+        +add() void
+        +edit() void
+        +markComplete() void
+        +markUncomplete() void
+    }
+
+    class Owner {
+        +String id
+        +String name
+        +Scheduler scheduler
+        +List~Pet~ pets
+        +addOwner() void
+        +changeOwner() void
+        +modifyName(String name) void
+        +addPet(Pet pet) void
+        +removePet(Pet pet) void
+        +setAvailability(int hours) void
+    }
+
+    class Pet {
+        +String id
+        +String name
+        +String breed
+        +List~String~ specialNeeds
+        +add() void
+        +remove() void
+        +addSpecialNeeds(String need) void
+    }
+
+    class Scheduler {
+        +List~Task~ tasks
+        +viewSchedule() List~Task~
+        +deleteSchedule() void
+        +createNewSchedule() void
+        +addTask(Task task) void
+        +prioritizeTasks() List~Task~
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Owner "1" --> "1" Scheduler : has
+    Scheduler "1" --> "*" Task : manages
+    Pet "1" --> "*" Task : requires
