@@ -97,3 +97,21 @@ Describe your app in numbered steps so a reader can follow along without watchin
 5. <!-- Add more steps as needed -->
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+
+## Testing PawPal+
+
+Command to run tests: python3 -m pytest
+
+====================================== test session starts =======================================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/jeremycharlesrafidimanana/Documents/summer 26/codepath/Projects/ai110-module2show-pawpal-starter
+plugins: anyio-4.13.0
+collected 19 items                                                                               
+
+tests/test_pawpal.py ...................                                                   [100%]
+
+======================================= 19 passed in 0.01s =======================================
+
+Description of what the tests cover: task completion/attachment, chronological sorting (incl. None times last), recurrence (daily/weekly spawn, one-off returns None, id doesn't compound, survives rebuild), conflict detection (duplicate times flagged), budget prioritization (mandatory kept over budget, completed excluded), back-to-back daily plan layout, filtering (AND, case-insensitive, unknown pet → []), and empty-pet edge cases.
+
+Confidence level: ⭐️⭐️⭐️⭐️⭐️
