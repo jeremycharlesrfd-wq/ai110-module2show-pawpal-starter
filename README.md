@@ -75,14 +75,16 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+All scheduling logic lives on the `Scheduler` and `Task` classes in [pawpal_system.py](pawpal_system.py). Below is each feature we implemented and the method that powers it.
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Chronological sorting | [`Scheduler.sort_by_time()`](pawpal_system.py#L288) | Orders scheduled tasks by their `HH:MM` time, earliest first; unscheduled tasks sink to the end |
+| Priority sorting | [`Scheduler.prioritize_tasks()`](pawpal_system.py#L307), [`Scheduler._order_key()`](pawpal_system.py#L298) | Sorts by priority (high → low), groups same-pet tasks, then shortest first |
+| Filtering | [`Scheduler.filter_tasks()`](pawpal_system.py#L255) | Filter by completion status and/or pet name; both are optional and combine with AND |
+| Time-budget filtering | [`Scheduler.prioritize_tasks()`](pawpal_system.py#L307) | Optional tasks that don't fit the owner's `available_hours` are dropped; mandatory tasks are always kept |
+| Conflict detection | [`Scheduler.detect_conflicts()`](pawpal_system.py#L346) | Groups tasks by exact start time and returns warning strings for overlaps (never raises) |
+| Recurring tasks | [`Task.mark_complete()`](pawpal_system.py#L107), [`Task.spawn_next()`](pawpal_system.py#L83), [`Task.next_due_date()`](pawpal_system.py#L67), [`Scheduler.complete_task()`](pawpal_system.py#L232) | Completing a `daily`/`weekly` task spawns a fresh copy for the next occurrence and re-enrolls it on the pet |
 
 ## 📸 Demo Walkthrough
 

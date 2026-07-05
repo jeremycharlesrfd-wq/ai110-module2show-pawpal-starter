@@ -56,7 +56,12 @@ Originally Task had its own `add()`/`edit()` methods and Pet had its own `add()`
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+
+When the day has more optional tasks than time to fit them, `prioritize_tasks()` fills the schedule *greedily* rather than searching for the mathematically best combination. It sorts optional tasks (highest priority first, same-pet tasks grouped, shortest first) and walks the list once, adding each task only if its length still fits in the remaining minutes. Mandatory tasks (like medication or feeding) are placed first and always kept, even if they overrun the budget; any optional task that doesn't fit is simply dropped. The tradeoff is that this greedy pass can leave time on the table — for example, it might skip a 40-minute task and never reconsider two 20-minute tasks that together would have filled the same slot more usefully. A true optimizer (a knapsack-style search) would find the highest-value combination, but at much higher complexity.
+
 - Why is that tradeoff reasonable for this scenario?
+
+For a single owner's daily pet-care routine, the task list is small (a handful of tasks per pet), so the "wasted" time from a greedy fill is minor and rarely noticeable in practice. In exchange, the logic stays simple, runs in a single linear pass after sorting, and is easy to read, test, and reason about. It also matches how a real owner thinks: do the must-dos first, then fit in whatever high-priority extras you have time for. Guaranteeing mandatory tasks are never dropped is far more important here than squeezing out the last few optional minutes — an optimal schedule that skipped a medication to fit two play sessions would be worse, not better. The added complexity of a full optimizer wouldn't earn its keep at this scale.
 
 ---
 
