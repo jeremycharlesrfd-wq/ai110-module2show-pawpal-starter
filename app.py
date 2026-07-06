@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import streamlit as st
 
 from pawpal_system import Task, Pet, Owner, Scheduler, priority_label
@@ -101,31 +103,80 @@ mandatory = st.checkbox(
     help="Medication, feeding, and other tasks that should never be dropped to fit the time budget.",
 )
 
-if st.button("Add task"):
-    task = Task(
-        id=task_title,
-        category=task_title,
-        length=int(duration),
-        priority_level=PRIORITY_LEVELS[priority],
-        mandatory=mandatory,
-    )
-    # Mutates the Pet living in the vault → persists across re-runs.
-    pet.add_task(task)
+preferred_time = st.text_input(
+    "Preferred start time (HH:MM, optional)",
+    value="",
+    help="Pin this task to a clock time. If two tasks want the same slot, "
+    "PawPal+ will flag the conflict when you build the schedule.",
+)
 
-if pet.tasks:
-    st.write("Current tasks:")
-    st.table(
-        [
-            {
-                "title": t.category,
-                "duration_minutes": t.length,
-                "priority": priority_label(t.priority_level),
-                "must_do": t.mandatory,
-                "done": t.completion,
-            }
-            for t in pet.tasks
-        ]
-    )
+if st.button("Add task"):
+    # Validate the optional time up front so a typo surfaces here, not deep in
+    # the scheduler. Empty means "no preference" — leave time as None.
+    pinned_time = None
+    if preferred_time.strip():
+        try:
+            datetime.strptime(preferred_time.strip(), "%H:%M")
+            pinned_time = preferred_time.strip()
+        except ValueError:
+            st.error("Preferred start time must be in HH:MM format (e.g. 09:30).")
+
+    if not preferred_time.strip() or pinned_time is not None:
+        task = Task(
+            id=task_title,
+            category=task_title,
+            length=int(duration),
+            priority_level=PRIORITY_LEVELS[priority],
+            mandatory=mandatory,
+            time=pinned_time,
+        )
+        # Mutates the Pet living in the vault → persists across re-runs.
+        pet.add_task(task)
+
+st.markdown("### Current tasks")
+
+# Sync the scheduler's task list with every pet's current tasks so the
+# filter/sort methods below read live data (they operate on scheduler.tasks).
+scheduler = owner.scheduler
+scheduler.create_new_schedule()
+
+if scheduler.tasks:
+    fcol1, fcol2 = st.columns(2)
+    with fcol1:
+        pet_filter = st.selectbox(
+            "Filter by pet", options=["All pets"] + [p.name for p in owner.pets]
+        )
+    with fcol2:
+        status_filter = st.selectbox("Filter by status", ["All", "To do", "Done"])
+
+    # Translate the UI choices into the keyword args Scheduler.filter_tasks expects.
+    completed = {"All": None, "To do": False, "Done": True}[status_filter]
+    pet_name = None if pet_filter == "All pets" else pet_filter
+
+    # Filter and sort using the Scheduler's own methods: sort_by_time() gives the
+    # canonical chronological order, and we keep only the tasks that pass the
+    # filter (matched by identity so duplicate titles don't collide).
+    matching = {id(t) for t in scheduler.filter_tasks(completed=completed, pet_name=pet_name)}
+    visible = [t for t in scheduler.sort_by_time() if id(t) in matching]
+
+    pet_names = {p.id: p.name for p in owner.pets}
+    if visible:
+        st.table(
+            [
+                {
+                    "time": t.time or "—",
+                    "pet": pet_names.get(t.pet_id, "—"),
+                    "task": t.category,
+                    "duration_minutes": t.length,
+                    "priority": priority_label(t.priority_level),
+                    "must_do": t.mandatory,
+                    "done": t.completion,
+                }
+                for t in visible
+            ]
+        )
+    else:
+        st.info("No tasks match this filter.")
 else:
     st.info("No tasks yet. Add one above.")
 
@@ -146,10 +197,32 @@ if st.button("Generate schedule"):
     # The plan spans ALL of the owner's pets (Scheduler._collect_owner_tasks).
     plan = owner.scheduler.build_daily_plan()
 
+    # Ask the Scheduler to flag any double-booked slots among the pinned
+    # preferred times. build_daily_plan() already refreshed scheduler.tasks.
+    conflicts = owner.scheduler.detect_conflicts()
+
+    # Conflicts come FIRST: a double-booking is the one thing a pet owner must
+    # act on, so we surface it before the plan rather than burying it below.
+    # It's a warning, not an error — the plan is still shown so the day isn't
+    # blocked, and we point to a concrete fix instead of just naming the clash.
+    if conflicts:
+        st.warning(f"⚠️ {len(conflicts)} time conflict(s) need your attention:")
+        for warning in conflicts:
+            st.markdown(f"- {warning}")
+        st.caption(
+            "Fix a conflict by staggering the tasks' preferred start times, or by "
+            "marking the essential one as must-do so it's placed first."
+        )
+
     # Resolve each task's pet_id back to a readable pet name for the table.
     pet_names = {p.id: p.name for p in owner.pets}
 
     if plan:
+        if not conflicts:
+            st.success(
+                f"✅ Planned {len(plan)} task(s) starting at {owner.available_from} — "
+                "no conflicts."
+            )
         st.table(
             [
                 {

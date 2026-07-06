@@ -73,6 +73,19 @@ Sample test output:
 # Paste your pytest output here
 ```
 
+## ✨ Features
+
+The scheduling algorithms below live on the `Scheduler` and `Task` classes in [pawpal_system.py](pawpal_system.py):
+
+- **Sorting by time** — [`Scheduler.sort_by_time()`](pawpal_system.py#L288) orders the day's tasks chronologically by their `HH:MM` start time. Zero-padded time strings sort correctly as plain text, and unscheduled tasks (no time yet) fall to the end via a `"99:99"` sentinel.
+- **Priority-based scheduling within a time budget** — [`Scheduler.prioritize_tasks()`](pawpal_system.py#L307) selects and orders tasks by priority (high → low), groups same-pet tasks together, and breaks ties shortest-first, all while fitting them into the owner's `available_hours`. Optional tasks that don't fit are dropped.
+- **Must-do (mandatory) task protection** — Tasks flagged `mandatory` (e.g. medication, feeding) are scheduled unconditionally *before* the time budget is applied, so essential care is never dropped to make room for optional work.
+- **Daily plan builder** — [`Scheduler.build_daily_plan()`](pawpal_system.py#L379) lays prioritized tasks back-to-back starting from the owner's `available_from` time, returning `(clock_time, task)` pairs where each task begins when the previous one ends.
+- **Conflict warnings** — [`Scheduler.detect_conflicts()`](pawpal_system.py#L346) groups tasks by exact start time and flags any slot with two or more tasks. It returns human-readable warnings rather than raising, so a double-booking never crashes the app.
+- **Filtering** — [`Scheduler.filter_tasks()`](pawpal_system.py#L255) narrows the schedule by completion status and/or pet name (case-insensitive), combining both with AND logic.
+- **Daily & weekly recurrence** — [`Task.next_due_date()`](pawpal_system.py#L67) and [`Task.spawn_next()`](pawpal_system.py#L83) roll a completed recurring task forward by one day or one week using `timedelta` (handling month/year boundaries automatically). [`Scheduler.complete_task()`](pawpal_system.py#L232) auto-enrolls the next occurrence on the pet so it survives a schedule rebuild.
+- **Priority labeling** — [`priority_label()`](pawpal_system.py#L21) maps numeric levels to `high` / `medium` / `low` for readable output across the CLI and Streamlit UI.
+
 ## 📐 Smarter Scheduling
 
 All scheduling logic lives on the `Scheduler` and `Task` classes in [pawpal_system.py](pawpal_system.py). Below is each feature we implemented and the method that powers it.
@@ -88,15 +101,82 @@ All scheduling logic lives on the `Scheduler` and `Task` classes in [pawpal_syst
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+PawPal+ runs as a Streamlit web app (`app.py`) with a matching terminal demo (`main.py`). This section walks through what the app can do without needing to watch a video.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+### Main UI features
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+The Streamlit app is organized top-to-bottom into a few sections:
+
+- **Owner** — enter the owner's name. The `Owner` is created once and persisted in Streamlit's session state, so it (and its pets/tasks) survive every re-run.
+- **Pets** — add pets with a name and species (dog / cat / other), then pick the *active pet* that new tasks attach to.
+- **Tasks** — give a task a title, duration (minutes), and priority (low / medium / high). You can also mark a task **Must-do** (never dropped to fit the time budget) and pin an optional **preferred start time** (`HH:MM`, validated on entry).
+- **Current tasks** — a live table of every task across all pets, with dropdowns to **filter by pet** and **filter by status** (To do / Done). The table is always shown in chronological order.
+- **Build Schedule** — set the owner's *available hours* and *available from* time, then click **Generate schedule** to produce a prioritized, back-to-back daily plan with conflict warnings surfaced at the top.
+
+### Example workflow
+
+1. Enter the owner name (e.g. `Jordan`). A starter pet, *Mochi (dog)*, is created automatically.
+2. In **Pets**, add another pet — say *Rex (dog)* — and select the pet you want to schedule for.
+3. In **Tasks**, add a few tasks: a `Feeding` (10 min, high, must-do), a `Morning walk` (45 min, medium), and a `Grooming` (30 min, low). Optionally pin a preferred start time on any of them.
+4. Scroll to **Current tasks** to confirm they appear, then use the filters to view just one pet's tasks or only the tasks still to do.
+5. In **Build Schedule**, set *available hours* (e.g. `2`) and *available from* (e.g. `10:00`), then click **Generate schedule** to see today's plan.
+
+### Key Scheduler behaviors shown
+
+- **Chronological sorting** — the Current tasks table and the terminal demo both order tasks by their `HH:MM` start time (unscheduled tasks sink to the end).
+- **Priority within a time budget** — the daily plan selects and orders tasks high → low priority, groups same-pet tasks, breaks ties shortest-first, and drops *optional* tasks that don't fit the owner's available hours.
+- **Must-do protection** — tasks flagged must-do (medication, feeding) are always scheduled first, even if the time budget is exceeded.
+- **Conflict warnings** — when two tasks share the same start time, PawPal+ shows a non-blocking `⚠️` warning above the plan (and prints one in the CLI) instead of crashing, with a suggested fix.
+- **Filtering** — filter by completion status and/or pet name (case-insensitive), combined with AND logic.
+
+### Sample CLI output
+
+Running the terminal demo exercises sorting, filtering, and conflict detection on a deliberately jumbled, double-booked schedule:
+
+```text
+$ python3 main.py
+============================================================
+As added (insertion order)
+============================================================
+  11:15 — Grooming (30 min) for Rex [priority: low, todo]
+  08:00 — Morning walk (45 min) for Rex [priority: medium, todo]
+  09:30 — Feeding (10 min) for Milo [priority: high, done]
+  10:00 — Playtime (20 min) for Milo [priority: low, todo]
+  08:00 — Vet call (15 min) for Milo [priority: medium, todo]
+
+============================================================
+Sorted by time
+============================================================
+  08:00 — Morning walk (45 min) for Rex [priority: medium, todo]
+  08:00 — Vet call (15 min) for Milo [priority: medium, todo]
+  09:30 — Feeding (10 min) for Milo [priority: high, done]
+  10:00 — Playtime (20 min) for Milo [priority: low, todo]
+  11:15 — Grooming (30 min) for Rex [priority: low, todo]
+
+============================================================
+Filter: completed tasks
+============================================================
+  09:30 — Feeding (10 min) for Milo [priority: high, done]
+
+============================================================
+Filter: remaining (incomplete) tasks
+============================================================
+  11:15 — Grooming (30 min) for Rex [priority: low, todo]
+  08:00 — Morning walk (45 min) for Rex [priority: medium, todo]
+  10:00 — Playtime (20 min) for Milo [priority: low, todo]
+  08:00 — Vet call (15 min) for Milo [priority: medium, todo]
+
+============================================================
+Filter: Rex's tasks
+============================================================
+  11:15 — Grooming (30 min) for Rex [priority: low, todo]
+  08:00 — Morning walk (45 min) for Rex [priority: medium, todo]
+
+============================================================
+Schedule conflicts
+============================================================
+  ⚠️  Conflict at 08:00: 2 tasks overlap — Morning walk (Rex), Vet call (Milo)
+```
 
 ## Testing PawPal+
 

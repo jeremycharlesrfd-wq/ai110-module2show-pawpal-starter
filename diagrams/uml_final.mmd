@@ -1,0 +1,69 @@
+classDiagram
+    %% PawPal+ class diagram (updated to match final implementation)
+
+    class Task {
+        +String id
+        +String category
+        +int length
+        +int priorityLevel
+        +bool completion
+        +String time
+        +bool mandatory
+        +String petId
+        +String recurrence
+        +Date dueDate
+        +setMandatory(bool value) void
+        +assignLength(int minutes) void
+        +assignPriorityLevel(int level) void
+        +assignCategory(String category) void
+        +nextDueDate() Date
+        +spawnNext() Task
+        +markComplete() Task
+        +markUncomplete() void
+    }
+
+    class Owner {
+        +String id
+        +String name
+        +Scheduler scheduler
+        +List~Pet~ pets
+        +int availableHours
+        +String availableFrom
+        +modifyName(String name) void
+        +addPet(Pet pet) void
+        +removePet(Pet pet) void
+        +setAvailability(int hours) void
+        +setAvailableFrom(String time) void
+    }
+
+    class Pet {
+        +String id
+        +String name
+        +String breed
+        +List~String~ specialNeeds
+        +List~Task~ tasks
+        +addSpecialNeeds(String need) void
+        +addTask(Task task) void
+        +removeTask(Task task) void
+    }
+
+    class Scheduler {
+        +List~Task~ tasks
+        +Owner owner
+        +viewSchedule() List~Task~
+        +deleteSchedule() void
+        +createNewSchedule() void
+        +addTask(Task task) void
+        +completeTask(Task task) Task
+        +filterTasks() List~Task~
+        +sortByTime() List~Task~
+        +prioritizeTasks() List~Task~
+        +detectConflicts() List~String~
+        +buildDailyPlan() List~Tuple~
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Owner "1" <--> "1" Scheduler : has
+    Scheduler "1" --> "*" Task : manages
+    Pet "1" <--> "*" Task : requires
+    Task ..> Task : spawnNext (recurrence)

@@ -36,7 +36,6 @@ Relationships: an Owner has one Scheduler and owns many Pets; the Scheduler mana
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
 
-Yes, it changed.
 
 **Change 1 — Connected Pets to their Tasks.**
 In my first design, a Pet had no link to the tasks it needed. That meant there was no way to know which pet a task belonged to. I added a `tasks` list to Pet (and a `pet_id` on Task) so every task points back to the pet that requires it. Without this, the scheduler could not answer a basic question like "what does this pet need today?"
@@ -52,6 +51,10 @@ Originally Task had its own `add()`/`edit()` methods and Pet had its own `add()`
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
+
+The scheduler considers available hours (time budget), start time and preferred-time conflict detection for the time. It also considers the priority of the tasks with a numeric priority level that puts the highest first. Regarding the preferences, the scheduler considers must-do flag and per-pet grouping. 
+
+The constraints that mattered the most were chosen based on how relevant and necessary they are for the user. For instance, it is essential for the user to tell their available hours and which tasks they need to priorititze. Basically, we considered the constraints that were essential for the proper functioning of the app.
 
 **b. Tradeoffs**
 
@@ -72,10 +75,15 @@ For a single owner's daily pet-care routine, the task list is small (a handful o
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
+AI helped me to visualize the design before the implementation, it gave me a way to see what their plan is and adjust it in case it is not going in the direction I wished for. It is also pretty effective at finding the flaws of the code and helping me to understand what can be fixed.
+The prompts that cites precisely what kind of code I am looking to build and why I want to implement it in the project usually gives the AI a good idea of how to tackle the quesstion. 
+
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
+
+Early on, the suggested structure put `add()`/`edit()` methods on `Task` and `Pet`, so each object managed itself. I did not accept that: an object cannot add itself to a list it does not know about. Instead I moved that responsibility to the classes that own the data — `Owner.add_pet()`/`remove_pet()` and `Scheduler.add_task()` — giving one clear place to create or remove each thing. I verified the design with the automated test suite, which confirmed tasks and pets were added, removed, and traced back to the right owner.
 
 ---
 
@@ -86,10 +94,30 @@ For a single owner's daily pet-care routine, the task list is small (a handful o
 - What behaviors did you test?
 - Why were these tests important?
 
+I tested the main things the scheduler needs to get right:
+- Marking a task done, and adding a task to a pet.
+- Sorting tasks by time, with unscheduled ones last.
+- Recurring tasks: a daily or weekly task creates the next one, a one-off does not.
+- Conflicts: two tasks at the same time raise a warning; different times do not.
+- The time budget: must-do tasks are always kept, optional ones fill the time left, and done tasks are skipped.
+- The daily plan (tasks laid back-to-back) and filtering by pet or status.
+
+These tests mattered because they check what the owner really cares about: nothing gets double-booked, must-do tasks like medication are never dropped, the time limit is respected, and the app does not crash on empty lists or unknown pets. They also let me change the code later and still trust it works.
+
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
+
+I am fairly confident. The 18 tests pass and cover the main behaviors and the common edge cases, so I trust the core logic. But the tests mostly use one pet, so I am less sure about days with several pets and lots of tasks.
+
+Edge cases I would test next:
+- More than one pet, to check that same-pet tasks really get grouped together.
+- Two tasks with the same priority, to make sure the tie-breaking order is stable.
+- A day set to 0 available hours.
+- A plan that runs past midnight (times going beyond 23:59).
+- A pinned preferred time, since the plan currently lays tasks back-to-back and ignores it.
+- Bad input, like a negative task length or a time that is not in HH:MM format.
 
 ---
 
@@ -99,10 +127,16 @@ For a single owner's daily pet-care routine, the task list is small (a handful o
 
 - What part of this project are you most satisfied with?
 
+My collaboration with AI went smoother and now, I am learning to use it more effectively and writing more precise prompts.
+
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
 
+I would add more test cases to make sure that the program works as intended even with more uncommon output from the user.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+I learned that AI can be a very powerful tool to help you implement the design that you're looking for but you have to be specific and precise about what you want for the AI to be able to build it. It is also essential to inspect carefully whether the AI is generating a properly working code that does what is expected from it.
